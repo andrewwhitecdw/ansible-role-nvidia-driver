@@ -1,0 +1,14 @@
+---
+- name: Verify RHEL major version integer comparison
+  hosts: localhost
+  gather_facts: false
+  tasks:
+    - name: simulate RHEL 10 fact
+      set_fact:
+        ansible_distribution_major_version: "10"
+
+    - name: assert version 10 is classified as 8 or newer
+      assert:
+        that:
+          - ansible_distribution_major_version | int > 7
+          - ansible_distribution_major_version | int >= 8
