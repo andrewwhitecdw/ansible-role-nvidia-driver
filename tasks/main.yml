@@ -46,6 +46,13 @@
     src: nvidia.conf.j2
     dest: "{{ nvidia_driver_module_file }}"
     mode: '0644'
+  when: nvidia_driver_package_state != 'absent'
+
+- name: remove module parameters
+  file:
+    path: "{{ nvidia_driver_module_file }}"
+    state: absent
+  when: nvidia_driver_package_state == 'absent'
 
 - name: reboot after driver install
   reboot:
