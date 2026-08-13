@@ -1,0 +1,21 @@
+---
+# Regression test for RHEL major-version string comparison.
+# ansible_distribution_major_version is normally a string fact; the
+# install-redhat.yml tasks must cast it to int so RHEL 10+ does not
+# incorrectly match the RHEL 7 code path.
+- hosts: localhost
+  connection: local
+  gather_facts: false
+  vars:
+    rhel_versions:
+      "7": { old_path: true, new_path: false }
+      "8": { old_path: false, new_path: true }
+      "9": { old_path: false, new_path: true }
+      "10": { old_path: false, new_path: true }
+  tasks:
+    - name: verify int comparison picks the correct driver path
+      assert:
+        that:
+          - "(item.key | int < 8) == item.value.old_path"
+          - "(item.key | int > 7) == item.value.new_path"
+        fail_msg: "Version {{ item.key }} selected the wrong driver path"
