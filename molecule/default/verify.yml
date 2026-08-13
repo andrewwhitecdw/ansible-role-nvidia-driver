@@ -1,10 +1,63 @@
 ---
-# This is an example playbook to execute Ansible tests.
+# Verify the role left the host in the expected state.
 
 - name: Verify
   hosts: all
-  gather_facts: false
+  gather_facts: true
   tasks:
-  - name: Example assertion
-    assert:
-      that: true
+    - name: Include role defaults for verification
+      include_vars:
+        file: "{{ playbook_dir }}/../../defaults/main.yml"
+
+    - name: Check that expected NVIDIA driver packages are present
+      package:
+        name: "{{ nvidia_driver_ubuntu_cuda_package if (nvidia_driver_ubuntu_install_from_cuda_repo | bool) else nvidia_driver_ubuntu_packages }}"
+        state: present
+      check_mode: true
+      register: pkg_check
+      failed_when: pkg_check is changed
+      when:
+        - ansible_os_family == 'Debian'
+        - nvidia_driver_package_state == 'present'
+
+    - name: Check that NVIDIA driver package is present on RedHat
+      command: rpm -q nvidia-driver
+      changed_when: false
+      when:
+        - ansible_os_family == 'RedHat'
+        - nvidia_driver_package_state == 'present'
+
+    - name: Check that nouveau is blacklisted
+      shell: grep -r '^blacklist nouveau$' /etc/modprobe.d/
+      changed_when: false
+      failed_when: false
+      register: nouveau_blacklist
+
+    - name: Assert nouveau is blacklisted
+      assert:
+        that:
+          - nouveau_blacklist.rc == 0
+
+    - name: Check that NVIDIA module parameters file exists
+      stat:
+        path: "{{ nvidia_driver_module_file }}"
+      register: module_file
+      when: nvidia_driver_module_params | length > 0
+
+    - name: Assert NVIDIA module parameters file exists
+      assert:
+        that:
+          - module_file.stat.exists
+      when: nvidia_driver_module_params | length > 0
+
+    - name: Check that nvidia-persistenced override is installed
+      stat:
+        path: /etc/systemd/system/nvidia-persistenced.service.d/override.conf
+      register: persistenced_override
+      when: nvidia_driver_persistence_mode_on | bool
+
+    - name: Assert nvidia-persistenced override is installed
+      assert:
+        that:
+          - persistenced_override.stat.exists
+      when: nvidia_driver_persistence_mode_on | bool
