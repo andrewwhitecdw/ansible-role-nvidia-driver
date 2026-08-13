@@ -49,4 +49,4 @@
 
 - name: reboot after driver install
   reboot:
-  when: install_driver.changed and not nvidia_driver_skip_reboot
+  when: install_driver is defined and install_driver.changed and not nvidia_driver_skip_reboot
